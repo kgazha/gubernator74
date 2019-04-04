@@ -1,22 +1,22 @@
 from datetime import datetime
 import pandas as pd
-from instaparser.agents import Agent, AgentAccount
-from instaparser.entities import Account, Media, Comment
+from instaparser.agents import Agent
+from instaparser.entities import Account, Media
 import pymorphy2
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
-from collections import defaultdict, Counter
-import re
+from collections import Counter
 import string
 import keywords
 import models
 import config
 from sqlalchemy.orm import sessionmaker
 import time
+from nltk import ngrams
+import collections
 
 
 morph = pymorphy2.MorphAnalyzer()
-
 session = sessionmaker(bind=config.ENGINE)()
 
 
@@ -72,20 +72,30 @@ class InstagramParser:
 class Analysis:
     def __init__(self):
         self.normalized_comments = []
-        self.comments = [q for q in session.query(models.Comment)][:10]
+        self.bigrams = []
+        self.comments = [q for q in session.query(models.Comment)]
 
     @staticmethod
     def get_normalized_words_from_text(text):
         translator = str.maketrans({key: " " for key in string.punctuation})
         cleaned_text = " ".join(text.translate(translator).split())
-        return [morph.parse(word)[0].normal_form for word in cleaned_text.split()]
+        normalized_words = []
+        for word in cleaned_text.split():
+            for parse_word in morph.parse(word):
+                if parse_word.tag.POS in ['NUMR', 'NPRO', 'PREP', 'CONJ', 'PRCL', 'INTJ']:
+                    break
+                if parse_word.tag.number:
+                    if parse_word.tag.number == 'sing':
+                        normalized_words.append(parse_word.normal_form)
+                        break
+        return normalized_words
 
     @staticmethod
     def filter_stop_words(words):
         return [word for word in words if word.lower() not in stopwords.words('russian')]
 
     def get_normalized_comment_words(self):
-        for comment in self.comments:
+        for comment in self.comments[:200]:
             normalized_words = Analysis.get_normalized_words_from_text(comment.text)
             self.normalized_comments.append(Analysis.filter_stop_words(normalized_words))
 
@@ -94,6 +104,7 @@ class Analysis:
             self.get_normalized_comment_words()
         for idx, comment in enumerate(self.normalized_comments):
             keywords_frequencies = dict(Counter(comment))
+            session.query(models.CommentKeyword).filter_by(comment_id=self.comments[idx].id).delete()
             for key, value in keywords_frequencies.items():
                 keyword = models.get_or_create(session, models.Keyword, name=key)[0]
                 comment_keyword = models.get_or_create(session, models.CommentKeyword,
@@ -103,7 +114,7 @@ class Analysis:
                 comment_keyword.keyword = keyword
                 self.comments[idx].keywords.append(comment_keyword)
                 session.flush()
-        session.commit()
+            session.commit()
 
     @staticmethod
     def manual_themes_to_database():
@@ -119,7 +130,7 @@ class Analysis:
         session.commit()
 
     @staticmethod
-    def comment_themes_matrix():
+    def comment_themes_matrix_to_excel():
         query = """
         SELECT comment_id, frequency, keyword.name as keyword, theme.name as theme, comment.text 
         FROM public.comment_keyword
@@ -141,13 +152,24 @@ class Analysis:
         df = pd.DataFrame(comment_keywords).T
         df.to_excel('comments.xlsx')
 
+    def get_bigrams_from_words(self):
+        if not self.normalized_comments:
+            self.get_normalized_comment_words()
+        for idx, comment in enumerate(self.normalized_comments):
+            _bigrams = []
+            for _bigram in ngrams(comment, 2):
+                self.bigrams.append(_bigram)
 
-instagram_parser = InstagramParser("alexeytexler.official")
-instagram_parser.save_comments_from_posts()
-print('start analyzing')
+
+# instagram_parser = InstagramParser("alexeytexler.official")
+# instagram_parser.save_comments_from_posts()
+print('start analysing')
 time_start = time.time()
 analyser = Analysis()
-analyser.normalized_comment_words_to_database()
-Analysis.manual_themes_to_database()
-Analysis.comment_themes_matrix()
-print('end analyzing', time.time() - time_start)
+# analyser.get_normalized_comment_words()
+# analyser.normalized_comment_words_to_database()
+# Analysis.manual_themes_to_database()
+# Analysis.comment_themes_matrix_to_excel()
+analyser.get_bigrams_from_words()
+print(collections.Counter(analyser.bigrams))
+print('end analysing', time.time() - time_start)
