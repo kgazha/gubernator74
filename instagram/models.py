@@ -52,10 +52,25 @@ class Comment(Base):
     keywords = relationship("CommentKeyword")
 
 
+class ThemeKeyword(Base):
+    __tablename__ = 'theme_keyword'
+    theme_id = Column(Integer, ForeignKey('theme.id'), primary_key=True)
+    keyword_id = Column(Integer, ForeignKey('keyword.id'), primary_key=True)
+    weight = Column(Float)
+    keyword = relationship("Keyword")
+
+
 class Keyword(Base):
     __tablename__ = 'keyword'
     id = Column(BigInteger, primary_key=True)
     name = Column(String)
+
+
+class Theme(Base):
+    __tablename__ = 'theme'
+    id = Column(BigInteger, primary_key=True)
+    name = Column(String)
+    keywords = relationship("ThemeKeyword")
 
 
 def get_or_create(session, model, **kwargs):
