@@ -22,24 +22,32 @@ class InstagramParser:
         self.instagram_login = instagram_login
         self.account = Account(self.instagram_login)
 
-    def __get_comments(self, post_media, comments=[], pointer=None):
+    def __get_comments(self, post_media, comments=None, pointer=None, last_comment_id=None):
+        _comments = []
+        _pointer = None
+        if comments:
+            _comments = comments
+        if pointer:
+            _pointer = pointer
         try:
-            _media, _pointer = self.agent.get_comments(post_media, pointer=pointer, delay=5)
+            _media, _pointer = self.agent.get_comments(post_media, pointer=_pointer, delay=5)
         except InternetException as ex:
             print(ex)
             logging.warning(ex)
-            return self.__get_comments(post_media, comments, _pointer)
-        comments += _media
+            return self.__get_comments(post_media, _comments, _pointer, last_comment_id)
+        _comments += _media
+        if last_comment_id:
+            if last_comment_id in [int(comment.id) for comment in _media]:
+                return _comments
         if _pointer:
-            return self.__get_comments(post_media, comments, _pointer)
-        return comments
-
+            return self.__get_comments(post_media, _comments, _pointer, last_comment_id)
+        return _comments
 
     def __download_comments_from_post(self, post_media):
         logging.info('Getting comments')
-        comments = self.__get_comments(post_media)
-        print(len(comments))
-        print(len(list(set(comments))))
+        last_comment = session.query(models.Comment).filter_by(post_id=post_media.id) \
+            .order_by(models.Comment.date.desc()).first()
+        comments = self.__get_comments(post_media, last_comment_id=last_comment.id)
         comments = list(set(comments))
         post_comments = []
         for comment in comments:
@@ -52,14 +60,15 @@ class InstagramParser:
 
     def save_comments_from_posts(self, count=20):
         media, pointer = self.agent.get_media(self.account, count=count, delay=5)
-        for idx in range(len(media), 1, -1):
+        for idx in range(len(media), 0, -1):
             logging.info('Start parsing post ' + media[-idx].code)
             post_media = Media(media[-idx])
             comments = self.__download_comments_from_post(post_media)
             post_owner = models.get_or_create(session, models.Account, name=self.account.login)[0]
-            post = models.get_or_create(session, models.Post, id=post_media.id, code=post_media.code,
-                                        caption=post_media.caption, owner_id=post_owner.id,
-                                        date=datetime.fromtimestamp(post_media.date))[0]
+            post = models.get_or_create(session, models.Post, id=post_media.id,
+                                        code=post_media.code, owner_id=post_owner.id)[0]
+            post.caption = post_media.caption
+            post.date = datetime.fromtimestamp(post_media.date)
             for comment in comments:
                 _author = models.get_or_create(session, models.Account, name=comment['Author'].login)[0]
                 _comment = models.get_or_create(session, models.Comment,
@@ -67,7 +76,6 @@ class InstagramParser:
                 _comment.date = comment['Date']
                 _comment.text = comment['Text']
                 _comment.author_id = _author.id
-            # session.flush()
             session.commit()
 
 

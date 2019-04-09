@@ -49,6 +49,7 @@ class Comment(Base):
     author_id = Column(Integer, ForeignKey('account.id'))
     text = Column(String)
     date = Column(DateTime)
+    last_keyword_analysis = Column(DateTime)
     keywords = relationship("CommentKeyword")
 
 
@@ -62,15 +63,22 @@ class ThemeKeyword(Base):
 
 class Keyword(Base):
     __tablename__ = 'keyword'
-    id = Column(BigInteger, primary_key=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String)
 
 
 class Theme(Base):
     __tablename__ = 'theme'
-    id = Column(BigInteger, primary_key=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String)
+    theme_type_id = Column(Integer, ForeignKey('theme_type.id'), nullable=True)
     keywords = relationship("ThemeKeyword")
+
+
+class ThemeType(Base):
+    __tablename__ = 'theme_type'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
 
 
 def get_or_create(session, model, **kwargs):
