@@ -5,7 +5,6 @@ from instaparser.exceptions import InternetException
 import models
 import config
 from sqlalchemy.orm import sessionmaker
-import time
 import logging
 
 
@@ -47,7 +46,10 @@ class InstagramParser:
         logging.info('Getting comments')
         last_comment = session.query(models.Comment).filter_by(post_id=post_media.id) \
             .order_by(models.Comment.date.desc()).first()
-        comments = self.__get_comments(post_media, last_comment_id=last_comment.id)
+        if last_comment:
+            comments = self.__get_comments(post_media, last_comment_id=last_comment.id)
+        else:
+            comments = self.__get_comments(post_media)
         comments = list(set(comments))
         post_comments = []
         for comment in comments:
@@ -81,4 +83,4 @@ class InstagramParser:
 
 if __name__ == '__main__':
     instagram_parser = InstagramParser("alexeytexler.official")
-    instagram_parser.save_comments_from_posts()
+    instagram_parser.save_comments_from_posts(2)
