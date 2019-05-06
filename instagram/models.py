@@ -11,8 +11,6 @@ class Account(Base):
     __tablename__ = 'account'
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    # post = relationship("Post")
-    # comment = relationship("Comment")
 
 
 class CommentKeyword(Base):
@@ -21,7 +19,6 @@ class CommentKeyword(Base):
     comment_id = Column(BigInteger, ForeignKey('comment.id'))
     keyword_id = Column(Integer, ForeignKey('keyword.id'))
     frequency = Column(String)
-    # keyword = relationship("Keyword", cascade="save-update, merge, delete")
 
 
 class SentenceWord(Base):
@@ -81,8 +78,6 @@ class Post(Base):
     owner_id = Column(Integer, ForeignKey('account.id'))
     caption = Column(String)
     date = Column(DateTime)
-    # comment = relationship("Comment")
-    # keywords = relationship("PostKeyword")
 
 
 class Comment(Base):
@@ -93,6 +88,7 @@ class Comment(Base):
     text = Column(String)
     date = Column(DateTime)
     last_keyword_analysis = Column(DateTime)
+    last_bigram_analysis = Column(DateTime)
     keywords = relationship("CommentKeyword", cascade="save-update, merge, delete")
 
 
@@ -100,7 +96,6 @@ class ThemeKeyword(Base):
     __tablename__ = 'theme_keyword'
     theme_id = Column(Integer, ForeignKey('theme.id', ondelete='CASCADE'), primary_key=True)
     keyword_id = Column(Integer, ForeignKey('keyword.id', ondelete='CASCADE'), primary_key=True)
-    # keyword = relationship("Keyword")
 
 
 class Word(Base):
@@ -120,7 +115,6 @@ class Theme(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     theme_type_id = Column(Integer, ForeignKey('theme_type.id'), nullable=True)
-    # keywords = relationship("ThemeKeyword")
 
 
 class ThemeType(Base):

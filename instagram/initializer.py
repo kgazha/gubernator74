@@ -36,8 +36,6 @@ def themes_to_database():
                 _keyword = models.get_or_create(session, models.Keyword, name=normalized_keyword)[0]
                 theme_keyword = models.get_or_create(session, models.ThemeKeyword,
                                                      theme_id=theme.id, keyword_id=_keyword.id)[0]
-                # theme_keyword.keyword = _keyword
-                # session.flush()
         session.commit()
 
     for theme_type_name, theme_type_data in themes.theme_bigrams.items():
@@ -57,8 +55,6 @@ def themes_to_database():
                                                second_keyword_id=second_keyword_id)[0]
                 theme_bigram = models.get_or_create(session, models.ThemeBigram,
                                                     theme_id=theme.id, bigram_id=_bigram.id)[0]
-                # theme_keyword.keyword = _keyword
-                # session.flush()
         session.commit()
 
 

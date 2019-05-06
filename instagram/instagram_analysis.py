@@ -26,7 +26,6 @@ class AnalysisTools:
             if len(word) < 3:
                 normalized_words.append(word.lower())
                 continue
-            normal_form_found = False
             normal_form = None
             for parse_word in morph.parse(word):
                 if use_main_pos and parse_word.tag.POS in ['NUMR', 'NPRO', 'PREP', 'CONJ', 'PRCL', 'INTJ']:
@@ -39,13 +38,8 @@ class AnalysisTools:
                         elif parse_word.tag.POS == 'NOUN' and not word.islower():
                             normal_form = parse_word.normal_form
                             break
-                        # normalized_words.append(parse_word.normal_form)
-                        normal_form_found = True
-                        # continue
-            print(normal_form)
             if normal_form:
                 normalized_words.append(normal_form)
-            # if not normal_form_found:
             else:
                 normalized_words.append(morph.parse(word)[0].normal_form.lower())
         return normalized_words
@@ -83,14 +77,6 @@ class AnalysisTools:
         else:
             s_type = session.query(model).filter(model.name == 'Повествовательное').first()
         return s_type
-    # @staticmethod
-    # def get_normalized_word(word):
-    #     for parse_word in morph.parse(word):
-    #         if parse_word.tag.POS in ['NUMR', 'NPRO', 'PREP', 'CONJ', 'PRCL', 'INTJ']:
-    #             break
-    #         if parse_word.tag.number:
-    #             if parse_word.tag.number == 'sing':
-    #                 return parse_word.normal_form
 
 
 class Analysis:
@@ -105,12 +91,10 @@ class Analysis:
             keywords_frequencies = dict(Counter(comment))
             for key, value in keywords_frequencies.items():
                 keyword = models.get_or_create(session, models.Keyword, name=key)[0]
-                # session.query(models.CommentKeyword).filter_by(comment_id=self.comments[idx].id).delete()
                 comment_keyword = models.get_or_create(session, models.CommentKeyword,
                                                        comment_id=self.comments[idx].id,
                                                        keyword_id=keyword.id)[0]
                 comment_keyword.frequency = value
-                # comment_keyword.keyword = keyword
                 self.comments[idx].keywords.append(comment_keyword)
             self.comments[idx].last_keyword_analysis = datetime.now()
             session.commit()
@@ -156,20 +140,15 @@ class Analysis:
                                                       comment_id=self.comments[idx].id,
                                                       bigram_id=bigram.id)[0]
                 comment_bigram.frequency = value
-                # self.comments[idx].keywords.append(comment_keyword)
-            # self.comments[idx].last_keyword_analysis = datetime.now()
+            self.comments[idx].last_bigram_analysis = datetime.now()
             session.commit()
 
 
 if __name__ == '__main__':
     _comments = session.query(models.Comment).filter(models.Comment.last_keyword_analysis.is_(None)).all()
     analyser = Analysis(_comments)
-    # analyser.comment_keywords_to_database()
-    analyser.comments = session.query(models.Comment).all()
-    # analyser.sentences_to_database()
-    print('>> bigrams')
+    analyser.comment_keywords_to_database()
+    analyser.comments = session.query(models.Comment).filter(models.Comment.last_bigram_analysis.is_(None)).all()
     analyser.bigrams_to_database()
-
+    # analyser.sentences_to_database()
     # analyser.comments = session.query(models.Comment).all()
-    # analyser.bigrams_to_database()
-    # print(AnalysisTools.get_bigrams_from_words(['ставь', 'стакан', 'окно', 'закрыть']))
