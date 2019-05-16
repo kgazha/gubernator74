@@ -1,11 +1,14 @@
 from datetime import datetime
-from instaparser.agents import Agent
-from instaparser.entities import Account, Media
+# from instaparser.agents import Agent
+# from instagram import WebAgent
+# from instaparser.entities import Account, Media
 from instaparser.exceptions import InternetException
 import models
 import config
 from sqlalchemy.orm import sessionmaker
+import time
 import logging
+from instagram import Account, Media, WebAgent
 
 
 logging.basicConfig(filename='instagram_parser.log',
@@ -17,7 +20,7 @@ session = sessionmaker(bind=config.ENGINE)()
 
 class InstagramParser:
     def __init__(self, instagram_login):
-        self.agent = Agent()
+        self.agent = WebAgent()
         self.instagram_login = instagram_login
         self.account = Account(self.instagram_login)
 
@@ -30,7 +33,8 @@ class InstagramParser:
             _pointer = pointer
         try:
             _media, _pointer = self.agent.get_comments(post_media, pointer=_pointer, delay=5)
-        except InternetException as ex:
+        # except InternetException as ex:
+        except Exception as ex:
             print(ex)
             logging.warning(ex)
             return self.__get_comments(post_media, _comments, _pointer, last_comment_id)
@@ -66,13 +70,13 @@ class InstagramParser:
             logging.info('Start parsing post ' + media[-idx].code)
             post_media = Media(media[-idx])
             comments = self.__download_comments_from_post(post_media)
-            post_owner = models.get_or_create(session, models.Account, name=self.account.login)[0]
+            post_owner = models.get_or_create(session, models.Account, name=self.account.username)[0]
             post = models.get_or_create(session, models.Post, id=post_media.id,
                                         code=post_media.code, owner_id=post_owner.id)[0]
             post.caption = post_media.caption
             post.date = datetime.fromtimestamp(post_media.date)
             for comment in comments:
-                _author = models.get_or_create(session, models.Account, name=comment['Author'].login)[0]
+                _author = models.get_or_create(session, models.Account, name=comment['Author'].username)[0]
                 _comment = models.get_or_create(session, models.Comment,
                                                 id=comment['Id'], post_id=post.id)[0]
                 _comment.date = comment['Date']
@@ -83,4 +87,4 @@ class InstagramParser:
 
 if __name__ == '__main__':
     instagram_parser = InstagramParser("alexeytexler.official")
-    instagram_parser.save_comments_from_posts(2)
+    instagram_parser.save_comments_from_posts()
