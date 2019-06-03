@@ -1,0 +1,1 @@
+python -c "from initializer import themes_to_database; themes_to_database()"

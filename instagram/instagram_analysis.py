@@ -147,8 +147,9 @@ class Analysis:
 if __name__ == '__main__':
     _comments = session.query(models.Comment).filter(models.Comment.last_keyword_analysis.is_(None)).all()
     analyser = Analysis(_comments)
+    # analyser.comments = session.query(models.Comment).all()
     analyser.comment_keywords_to_database()
     analyser.comments = session.query(models.Comment).filter(models.Comment.last_bigram_analysis.is_(None)).all()
+    # analyser.comments = session.query(models.Comment).all()
     analyser.bigrams_to_database()
     # analyser.sentences_to_database()
-    # analyser.comments = session.query(models.Comment).all()
