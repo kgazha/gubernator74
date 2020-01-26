@@ -1,7 +1,4 @@
 from datetime import datetime
-# from instaparser.agents import Agent
-# from instagram import WebAgent
-# from instaparser.entities import Account, Media
 from instaparser.exceptions import InternetException
 import models
 import config
@@ -21,8 +18,7 @@ session = sessionmaker(bind=config.ENGINE)()
 class InstagramParser:
     def __init__(self, instagram_login):
         self.agent = WebAgent()
-        self.instagram_login = instagram_login
-        self.account = Account(self.instagram_login)
+        self.account = Account(instagram_login)
 
     def __get_comments(self, post_media, comments=None, pointer=None, last_comment_id=None):
         _comments = []
@@ -33,9 +29,7 @@ class InstagramParser:
             _pointer = pointer
         try:
             _media, _pointer = self.agent.get_comments(post_media, pointer=_pointer, delay=5)
-        # except InternetException as ex:
         except Exception as ex:
-            print(ex)
             logging.warning(ex)
             return self.__get_comments(post_media, _comments, _pointer, last_comment_id)
         _comments += _media
@@ -64,7 +58,7 @@ class InstagramParser:
             post_comments.append(comment_info)
         return post_comments
 
-    def save_comments_from_posts(self, count=20):
+    def save_comments_from_posts(self, count=100):
         media, pointer = self.agent.get_media(self.account, count=count, delay=5)
         for idx in range(len(media), 0, -1):
             logging.info('Start parsing post ' + media[-idx].code)
